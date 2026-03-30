@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CMY Color AI - Intelligent Color Matching</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 30px 0;
+            position: relative;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #00FFFF, #FF00FF, #FFFF00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 1.1rem;
+        }
+
+        .cmy-primaries {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 20px 0;
+        }
+
+        .primary-color {
+            padding: 15px 30px;
+            border-radius: 30px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .cyan { background: #00FFFF; color: #000; }
+        .magenta { background: #FF00FF; color: #000; }
+        .yellow { background: #FFFF00; color: #000; }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .color-cube-section {
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+        }
+
+        .cube-container {
+            width: 100%;
+            height: 400px;
+            perspective: 1000px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .color-cube {
+            width: 200px;
+            height: 200px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.5s ease;
+        }
+
+        .cube-face {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border: 2px solid rgba(255,255,255,0.3);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        }
+
+        .cube-face.front { 
+            background: cyan; 
+            transform: translateZ(100px);
+        }
+        .cube-face.back { 
+            background: white; 
+            transform: rotateY(180deg) translateZ(100px);
+        }
+        .cube-face.left { 
+            background: magenta; 
+            transform: rotateY(-90deg) translateZ(100px);
+        }
+        .cube-face.right { 
+            background: yellow; 
+            transform: rotateY(90deg) translateZ(100px);
+        }
+        .cube-face.top { 
+            background: linear-gradient(135deg, cyan, magenta); 
+            transform: rotateX(90deg) translateZ(100px);
+        }
+        .cube-face.bottom { 
+            background: linear-gradient(135deg, yellow, cyan); 
+            transform: rotateX(-90deg) translateZ(100px);
+        }
+
+        .cube-controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+
+        .cube-btn {
+            background: linear-gradient(135deg, #00FFFF, #FF00FF);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .cube-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(0,255,255,0.4);
+        }
+
+        .chat-section {
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            height: 500px;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            border-radius: 15px;
+            background: rgba(0,0,0,0.3);
+            margin-bottom: 15px;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user {
+            text-align: right;
+        }
+
+        .message .bubble {
+            display: inline-block;
+            padding: 12px 18px;
+            border-radius: 18px;
+            max-width: 80%;
+            line-height: 1.5;
+        }
+
+        .message.user .bubble {
+            background: linear-gradient(135deg, #00FFFF, #00CCCC);
+            color: #000;
+            border-bottom-right-radius: 5px;
+        }
+
+        .message.ai .bubble {
+            background: linear-gradient(135deg, #FF00FF, #CC00CC);
+            color: #fff;
+            border-bottom-left-radius: 5px;
+        }
+
+        .color-result {
+            margin-top: 10px;
+            padding: 15px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 10px;
+        }
+
+        .color-preview {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-top: 10px;
+        }
+
+        .preview-swatch {
+            width: 80px;
+            height: 80px;
+            border-radius: 10px;
+            border: 3px solid #fff;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+
+        .cmy-values {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .cmy-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .cmy-label {
+            width: 80px;
+            font-weight: bold;
+        }
+
+        .cmy-label.cyan { color: #00FFFF; }
+        .cmy-label.magenta { color: #FF00FF; }
+        .cmy-label.yellow { color: #FFFF00; }
+
+        .cmy-track {
+            flex: 1;
+            height: 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .cmy-fill {
+            height: 100%;
+            transition: width 0.5s ease;
+        }
+
+        .cmy-fill.cyan { background: linear-gradient(90deg, #003333, #00FFFF); }
+        .cmy-fill.magenta { background: linear-gradient(90deg, #330033, #FF00FF); }
+        .cmy-fill.yellow { background: linear-gradient(90deg, #333300, #FFFF00); }
+
+        .cmy-percentage {
+            width: 50px;
+            text-align: right;
+            font-family: monospace;
+        }
+
+        .chat-input-container {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 15px 20px;
+            border-radius: 30px;
+            border: 2px solid rgba(255,255,255,0.2);
+            background: rgba(0,0,0,0.3);
+            color: #fff;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .chat-input:focus {
+            border-color: #00FFFF;
+        }
+
+        .send-btn {
+            padding: 15px 30px;
+            border-radius: 30px;
+            border: none;
+            background: linear-gradient(135deg, #00FFFF, #FF00FF);
+            color: #000;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .send-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 25px rgba(0,255,255,0.5);
+        }
+
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .suggestions {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 15px;
+        }
+
+        .suggestions h3 {
+            margin-bottom: 15px;
+            color: #00FFFF;
+        }
+
+        .suggestion-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .chip {
+            padding: 8px 16px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .chip:hover {
+            background: rgba(0,255,255,0.2);
+            border-color: #00FFFF;
+        }
+
+        .analyzing {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #888;
+        }
+
+        .analyzing .dot {
+            width: 8px;
+            height: 8px;
+            background: #00FFFF;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite ease-in-out both;
+        }
+
+        .analyzing .dot:nth-child(1) { animation-delay: -0.32s; }
+        .analyzing .dot:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        .rotation-display {
+            text-align: center;
+            margin-top: 15px;
+            font-family: monospace;
+            color: #888;
+        }
+
+        .matching-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+        }
+
+        .matching-info .exact {
+            color: #00FF00;
+        }
+
+        .matching-info .close {
+            color: #FFFF00;
+        }
+
+        .matching-info .approximate {
+            color: #FF8800;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #888;
+        }
+
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .cmy-primaries {
+                flex-wrap: wrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🎨 CMY Color AI</h1>
+            <p class="subtitle">Artificial Intelligence Color Matching using Cyan, Magenta & Yellow</p>
+            <div class="cmy-primaries">
+                <span class="primary-color cyan">CYAN</span>
+                <span class="primary-color magenta">MAGENTA</span>
+                <span class="primary-color yellow">YELLOW</span>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="color-cube-section">
+                <h2 style="text-align:center; margin-bottom:20px;">🧊 CMY Color Cube</h2>
+                <div class="cube-container">
+                    <div class="color-cube" id="colorCube">
+                        <div class="cube-face front">Cyan</div>
+                        <div class="cube-face back">White</div>
+                        <div class="cube-face left">Magenta</div>
+                        <div class="cube-face right">Yellow</div>
+                        <div class="cube-face top">C+M</div>
+                        <div class="cube-face bottom">C+Y</div>
+                    </div>
+                </div>
+                <div class="cube-controls">
+                    <button class="cube-btn" onclick="rotateCubeX()">↻ Rotate X</button>
+                    <button class="cube-btn" onclick="rotateCubeY()">↻ Rotate Y</button>
+                    <button class="cube-btn" onclick="rotateCubeZ()">↻ Rotate Z</button>
+                    <button class="cube-btn" onclick="resetCube()">Reset</button>
+                </div>
+                <div class="rotation-display" id="rotationDisplay">X: -20° Y: 30° Z: 0°</div>
+                <div class="legend">
+                    <span>Cyan + Magenta = Blue</span>
+                    <span>Cyan + Yellow = Green</span>
+                    <span>Magenta + Yellow = Red</span>
+                </div>
+            </div>
+
+            <div class="chat-section">
+                <h2 style="text-align:center; margin-bottom:15px;">💬 Ask for a Color</h2>
+                <div class="chat-messages" id="chatMessages">
+                    <div class="message ai">
+                        <div class="bubble">
+                            Hello! I'm your CMY Color AI assistant. Ask me for any color, and I'll find the closest match using only Cyan, Magenta, and Yellow pigments!<br><br>
+                            Try asking: "Give me a sky blue" or "What's the best cyan for ocean water?"
+                        </div>
+                    </div>
+                </div>
+                <div class="chat-input-container">
+                    <input type="text" class="chat-input" id="colorInput" placeholder="Ask for a color... (e.g., 'ocean blue')" onkeypress="handleKeyPress(event)">
+                    <button class="send-btn" id="sendBtn" onclick="processColorRequest()">Ask</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="suggestions">
+            <h3>✨ Try these colors:</h3>
+            <div class="suggestion-chips">
+                <span class="chip" onclick="quickColor('sky blue')">Sky Blue</span>
+                <span class="chip" onclick="quickColor('forest green')">Forest Green</span>
+                <span class="chip" onclick="quickColor('sunset orange')">Sunset Orange</span>
+                <span class="chip" onclick="quickColor('royal purple')">Royal Purple</span>
+                <span class="chip" onclick="quickColor('peach')">Peach</span>
+                <span class="chip" onclick="quickColor('navy blue')">Navy Blue</span>
+                <span class="chip" onclick="quickColor('grass green')">Grass Green</span>
+                <span class="chip" onclick="quickColor('coral')">Coral</span>
+                <span class="chip" onclick="quickColor('lavender')">Lavender</span>
+                <span class="chip" onclick="quickColor('tomato red')">Tomato Red</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // CMY Color Database and AI Engine
+        class CMYColorAI {
+            constructor() {
+                // Color database with CMY values
+                this.colorDatabase = this.buildColorDatabase();
+                
+                // Color descriptors for semantic understanding
+                this.colorDescriptors = {
+                    'sky': { c: 0.3, m: 0.1, y: 0 },
+                    'ocean': { c: 0.6, m: 0.1, y: 0.1 },
+                    'navy': { c: 0.8, m: 0.5, y: 0.2 },
+                    'royal': { c: 0.8, m: 0.8, y: 0 },
+                    'cobalt': { c: 0.7, m: 0.6, y: 0 },
+                    'azure': { c: 0.4, m: 0.2, y: 0 },
+                    'forest': { c: 0.7, m: 0.2, y: 0.7 },
+                    'grass': { c: 0.5, m: 0.1, y: 0.6 },
+                    'emerald': { c: 0.6, m: 0.2, y: 0.4 },
+                    'lime': { c: 0.3, m: 0, y: 0.7 },
+                    'olive': { c: 0.5, m: 0.3, y: 0.7 },
+                    'sage': { c: 0.4, m: 0.2, y: 0.4 },
+                    'sunset': { c: 0, m: 0.5, y: 0.5 },
+                    'orange': { c: 0, m: 0.5, y: 0.8 },
+                    'tomato': { c: 0, m: 0.8, y: 0.7 },
+                    'coral': { c: 0, m: 0.4, y: 0.3 },
+                    'peach': { c: 0, m: 0.2, y: 0.3 },
+                    'salmon': { c: 0, m: 0.3, y: 0.3 },
+                    'royal purple': { c: 0.7, m: 0.9, y: 0.2 },
+                    'lavender': { c: 0.2, m: 0.3, y: 0 },
+                    'magenta': { c: 0, m: 1, y: 0 },
+                    'violet': { c: 0.5, m: 0.7, y: 0 },
+                    'plum': { c: 0.4, m: 0.6, y: 0.2 },
+                    'rose': { c: 0, m: 0.4, y: 0.2 },
+                    'white': { c: 0, m: 0, y: 0 },
+                    'black': { c: 1, m: 1, y: 1 },
+                    'gray': { c: 0.3, m: 0.3, y: 0.3 },
+                    'grey': { c: 0.3, m: 0.3, y: 0.3 },
+                    'lemon': { c: 0.1, m: 0.1, y: 0.8 },
+                    'gold': { c: 0, m: 0.3, y: 0.8 },
+                    'mustard': { c: 0.2, m: 0.3, y: 0.8 },
+                    'brown': { c: 0.5, m: 0.6, y: 0.8 },
+                    'tan': { c: 0.2, m: 0.3, y: 0.5 },
+                    'chocolate': { c: 0.4, m: 0.6, y: 0.8 },
+                    'coffee': { c: 0.5, m: 0.5, y: 0.7 },
+                    'teal': { c: 0.7, m: 0.1, y: 0.2 },
+                    'aqua': { c: 0.4, m: 0.1, y: 0.1 },
+                    'turquoise': { c: 0.5, m: 0.1, y: 0.15 },
+                    'mint': { c: 0.3, m: 0.1, y: 0.2 },
+                    'berry': { c: 0.3, m: 0.6, y: 0.3 },
+                    'maroon': { c: 0.4, m: 0.8, y: 0.6 },
+                    'indigo': { c: 0.8, m: 0.7, y: 0.2 },
+                    'cream': { c: 0.1, m: 0.1, y: 0.25 },
+                    'cyan': { c: 1, m: 0, y: 0 },
+                    'red': { c: 0, m: 1, y: 1 },
+                    'green': { c: 1, m: 0, y: 1 },
+                    'blue': { c: 1, m: 1, y: 0 },
+                    'yellow': { c: 0, m: 0, y: 1 }
+                };
+            }
+
+            buildColorDatabase() {
+                const colors = [];
+                // Generate colors at 10% increments
+                for (let c = 0; c <= 1; c += 0.1) {
+                    for (let m = 0; m <= 1; m += 0.1) {
+                        for (let y = 0; y <= 1; y += 0.1) {
+                            const r = Math.round(255 * (1 - c));
+                            const g = Math.round(255 * (1 - m));
+                            const b = Math.round(255 * (1 - y));
+                            colors.push({ c: Math.round(c * 10) / 10, m: Math.round(m * 10) / 10, y: Math.round(y * 10) / 10, r, g, b });
+                        }
+                    }
+                }
+                return colors;
+            }
+
+            cmyToRgb(c, m, y) {
+                return {
+                    r: Math.round(255 * (1 - c)),
+                    g: Math.round(255 * (1 - m)),
+                    b: Math.round(255 * (1 - y))
+                };
+            }
+
+            parseColorRequest(text) {
+                const lowerText = text.toLowerCase();
+                
+                // Direct color name matching
+                for (const [name, cmy] of Object.entries(this.colorDescriptors)) {
+                    if (lowerText.includes(name)) {
+                        return { baseColor: name, cmy: { ...cmy }, confidence: 0.9 };
+                    }
+                }
+
+                let modifier = 1.0;
+                let cmy = { c: 0.5, m: 0.5, y: 0.5 };
+
+                if (lowerText.includes('light') || lowerText.includes('pale') || lowerText.includes('soft')) {
+                    modifier = 0.6;
+                } else if (lowerText.includes('dark') || lowerText.includes('deep') || lowerText.includes('rich')) {
+                    modifier = 1.3;
+                } else if (lowerText.includes('bright') || lowerText.includes('vibrant') || lowerText.includes('saturated')) {
+                    modifier = 1.2;
+                } else if (lowerText.includes('muted') || lowerText.includes('dull')) {
+                    modifier = 0.7;
+                }
+
+                if (lowerText.includes('blue')) {
+                    cmy = { c: 0.6, m: 0.2, y: 0.1 };
+                } else if (lowerText.includes('green')) {
+                    cmy = { c: 0.6, m: 0.1, y: 0.5 };
+                } else if (lowerText.includes('red')) {
+                    cmy = { c: 0.1, m: 0.7, y: 0.6 };
+                } else if (lowerText.includes('yellow')) {
+                    cmy = { c: 0.1, m: 0.1, y: 0.7 };
+                } else if (lowerText.includes('purple') || lowerText.includes('violet')) {
+                    cmy = { c: 0.5, m: 0.7, y: 0.1 };
+                } else if (lowerText.includes('orange')) {
+                    cmy = { c: 0, m: 0.5, y: 0.7 };
+                } else if (lowerText.includes('pink')) {
+                    cmy = { c: 0.1, m: 0.3, y: 0.15 };
+                } else if (lowerText.includes('brown')) {
+                    cmy = { c: 0.4, m: 0.5, y: 0.7 };
+                } else if (lowerText.includes('teal')) {
+                    cmy = { c: 0.7, m: 0.1, y: 0.2 };
+                }
+
+                cmy.c = Math.min(1, Math.max(0, cmy.c * modifier));
+                cmy.m = Math.min(1, Math.max(0, cmy.m * modifier));
+                cmy.y = Math.min(1, Math.max(0, cmy.y * modifier));
+
+                return { baseColor: 'custom', cmy, confidence: 0.7 };
+            }
+
+            optimizeCMY(targetCmy, iterations = 50) {
+                let c = targetCmy.c;
+                let m = targetCmy.m;
+                let y = targetCmy.y;
+
+                const targetRgb = this.cmyToRgb(c, m, y);
+
+                for (let i = 0; i < iterations; i++) {
+                    const currentRgb = this.cmyToRgb(c, m, y);
+                    
+                    const errorR = (currentRgb.r - targetRgb.r) / 255;
+                    const errorG = (currentRgb.g - targetRgb.g) / 255;
+                    const errorB = (currentRgb.b - targetRgb.b) / 255;
+
+                    c -= errorR * 0.05;
+                    m -= errorG * 0.05;
+                    y -= errorB * 0.05;
+
+                    c = Math.min(1, Math.max(0, c));
+                    m = Math.min(1, Math.max(0, m));
+                    y = Math.min(1, Math.max(0, y));
+                }
+
+                return { c: Math.round(c * 10) / 10, m: Math.round(m * 10) / 10, y: Math.round(y * 10) / 10 };
+            }
+
+            rotateColorCube(targetCmy, angleX, angleY, angleZ) {
+                const radX = (angleX * Math.PI) / 180;
+                const radY = (angleY * Math.PI) / 180;
+                const radZ = (angleZ * Math.PI) / 180;
+
+                const cosX = Math.cos(radX);
+                const sinX = Math.sin(radX);
+                const cosY = Math.cos(radY);
+                const sinY = Math.sin(radY);
+                const cosZ = Math.cos(radZ);
+                const sinZ = Math.sin(radZ);
+
+                let newC = targetCmy.c * cosY * cosZ - targetCmy.m * cosY * sinZ + targetCmy.y * sinY;
+                let newM = targetCmy.c * (sinX * sinY * cosZ + sinX * sinZ) + 
+                           targetCmy.m * (cosX * cosZ - sinX * sinY * sinZ) - 
+                           targetCmy.y * cosY * sinX;
+                let newY = targetCmy.c * (sinX * sinZ - cosX * sinY * cosZ) + 
+                           targetCmy.m * (cosX * sinY * sinZ + sinX * cosZ) + 
+                           targetCmy.y * cosX * cosY;
+
+                newC = Math.min(1, Math.max(0, Math.round(newC * 10) / 10));
+                newM = Math.min(1, Math.max(0, Math.round(newM * 10) / 10));
+                newY = Math.min(1, Math.max(0, Math.round(newY * 10) / 10));
+
+                return { c: newC, m: newM, y: newY };
+            }
+
+            findClosestMatch(targetCmy) {
+                let bestMatch = null;
+                let minDistance = Infinity;
+
+                for (const color of this.colorDatabase) {
+                    const distance = Math.sqrt(
+                        Math.pow(color.c - targetCmy.c, 2) +
+                        Math.pow(color.m - targetCmy.m, 2) +
+                        Math.pow(color.y - targetCmy.y, 2)
+                    );
+
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        bestMatch = color;
+                    }
+                }
+
+                // Fallback if no match found
+                if (!bestMatch) {
+                    bestMatch = { c: 0.5, m: 0.5, y: 0.5, r: 128, g: 128, b: 128 };
+                }
+
+                return bestMatch;
+            }
+
+            async processRequest(colorName) {
+                // Simulate AI processing time
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                const parsed = this.parseColorRequest(colorName);
+                const optimized = this.optimizeCMY(parsed.cmy);
+                
+                const angles = {
+                    x: Math.random() * 360,
+                    y: Math.random() * 360,
+                    z: Math.random() * 360
+                };
+                
+                const rotated = this.rotateColorCube(optimized, angles.x, angles.y, angles.z);
+                const closest = this.findClosestMatch(rotated);
+                
+                const distance = Math.sqrt(
+                    Math.pow(closest.c - parsed.cmy.c, 2) +
+                    Math.pow(closest.m - parsed.cmy.m, 2) +
+                    Math.pow(closest.y - parsed.cmy.y, 2)
+                );
+
+                let matchQuality;
+                if (distance < 0.1) {
+                    matchQuality = 'exact';
+                } else if (distance < 0.3) {
+                    matchQuality = 'close';
+                } else {
+                    matchQuality = 'approximate';
+                }
+
+                return {
+                    requested: colorName,
+                    parsed: parsed,
+                    optimized: optimized,
+                    rotated: rotated,
+                    cmy: closest,
+                    rgb: { r: closest.r, g: closest.g, b: closest.b },
+                    matchQuality: matchQuality,
+                    distance: distance,
+                    rotationAngles: angles
+                };
+            }
+        }
+
+        // Initialize
+        const cmyAI = new CMYColorAI();
+        let cubeRotation = { x: -20, y: 30, z: 0 };
+
+        function rotateCubeX() {
+            cubeRotation.x += 45;
+            updateCubeRotation();
+        }
+
+        function rotateCubeY() {
+            cubeRotation.y += 45;
+            updateCubeRotation();
+        }
+
+        function rotateCubeZ() {
+            cubeRotation.z += 45;
+            updateCubeRotation();
+        }
+
+        function resetCube() {
+            cubeRotation = { x: -20, y: 30, z: 0 };
+            updateCubeRotation();
+        }
+
+        function updateCubeRotation() {
+            const cube = document.getElementById('colorCube');
+            const display = document.getElementById('rotationDisplay');
+            if (cube && display) {
+                cube.style.transform = 'rotateX(' + cubeRotation.x + 'deg) rotateY(' + cubeRotation.y + 'deg) rotateZ(' + cubeRotation.z + 'deg)';
+                display.textContent = 'X: ' + Math.round(cubeRotation.x) + '° Y: ' + Math.round(cubeRotation.y) + '° Z: ' + Math.round(cubeRotation.z) + '°';
+            }
+        }
+
+        function handleKeyPress(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                processColorRequest();
+            }
+        }
+
+        async function processColorRequest() {
+            const input = document.getElementById('colorInput');
+            const sendBtn = document.getElementById('sendBtn');
+            const chatMessages = document.getElementById('chatMessages');
+            
+            const colorRequest = input.value.trim();
+            if (!colorRequest) return;
+
+            addMessage('user', colorRequest);
+            input.value = '';
+            sendBtn.disabled = true;
+
+            const loadingId = addLoadingMessage();
+
+            try {
+                const result = await cmyAI.processRequest(colorRequest);
+                removeLoadingMessage(loadingId);
+                addColorResponse(result);
+                animateCubeToResult(result.rotationAngles);
+            } catch (error) {
+                console.error('Error:', error);
+                removeLoadingMessage(loadingId);
+                addMessage('ai', 'Sorry, I encountered an error. Please try again.');
+            }
+
+            sendBtn.disabled = false;
+        }
+
+        function addMessage(type, text) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ' + type;
+            messageDiv.innerHTML = '<div class="bubble">' + text + '</div>';
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function addLoadingMessage() {
+            const chatMessages = document.getElementById('chatMessages');
+            const loadingId = 'loading-' + Date.now();
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'message ai';
+            loadingDiv.id = loadingId;
+            loadingDiv.innerHTML = '<div class="bubble analyzing"><span>Analyzing</span><div class="dot"></div><div class="dot"></div><div class="dot"></div><span>Rotating color cube</span></div>';
+            chatMessages.appendChild(loadingDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return loadingId;
+        }
+
+        function removeLoadingMessage(id) {
+            const loadingDiv = document.getElementById(id);
+            if (loadingDiv) loadingDiv.remove();
+        }
+
+        function addColorResponse(result) {
+            const chatMessages = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message ai';
+
+            const qualityClass = result.matchQuality;
+            const qualityText = result.matchQuality === 'exact' ? '✓ Exact Match!' : 
+                               result.matchQuality === 'close' ? '≈ Close Match' : '~ Approximate Match';
+
+            const rgbHex = rgbToHex(result.rgb.r, result.rgb.g, result.rgb.b);
+
+            messageDiv.innerHTML = '<div class="bubble">' +
+                'I analyzed your request for "<strong>' + result.requested + '</strong>" and found the optimal CMY representation!<br><br>' +
+                '<div class="matching-info"><span class="' + qualityClass + '">' + qualityText + '</span></div>' +
+                '<div class="color-result">' +
+                    '<div style="font-weight:bold; margin-bottom:8px;">Mixed Color Preview:</div>' +
+                    '<div class="color-preview">' +
+                        '<div class="preview-swatch" style="background: ' + rgbHex + ';"></div>' +
+                        '<div class="cmy-values">' +
+                            '<div class="cmy-bar">' +
+                                '<span class="cmy-label cyan">Cyan (C)</span>' +
+                                '<div class="cmy-track"><div class="cmy-fill cyan" style="width: ' + (result.cmy.c * 100) + '%;"></div></div>' +
+                                '<span class="cmy-percentage">' + Math.round(result.cmy.c * 100) + '%</span>' +
+                            '</div>' +
+                            '<div class="cmy-bar">' +
+                                '<span class="cmy-label magenta">Magenta (M)</span>' +
+                                '<div class="cmy-track"><div class="cmy-fill magenta" style="width: ' + (result.cmy.m * 100) + '%;"></div></div>' +
+                                '<span class="cmy-percentage">' + Math.round(result.cmy.m * 100) + '%</span>' +
+                            '</div>' +
+                            '<div class="cmy-bar">' +
+                                '<span class="cmy-label yellow">Yellow (Y)</span>' +
+                                '<div class="cmy-track"><div class="cmy-fill yellow" style="width: ' + (result.cmy.y * 100) + '%;"></div></div>' +
+                                '<span class="cmy-percentage">' + Math.round(result.cmy.y * 100) + '%</span>' +
+                            '</div>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div style="margin-top:10px; font-family:monospace;">RGB: (' + result.rgb.r + ', ' + result.rgb.g + ', ' + result.rgb.b + ') | Hex: ' + rgbHex + '</div>' +
+                '</div>' +
+                '<div class="matching-info" style="margin-top:10px;">' +
+                    '<strong>AI Processing:</strong><br>' +
+                    '• Parsed: ' + result.parsed.baseColor + '<br>' +
+                    '• Optimized: C=' + result.optimized.c + ' M=' + result.optimized.m + ' Y=' + result.optimized.y + '<br>' +
+                    '• Cube rotated: X=' + Math.round(result.rotationAngles.x) + '° Y=' + Math.round(result.rotationAngles.y) + '° Z=' + Math.round(result.rotationAngles.z) + '°' +
+                '</div>' +
+            '</div>';
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function rgbToHex(r, g, b) {
+            return '#' + [r, g, b].map(function(x) { 
+                return x.toString(16).padStart(2, '0'); 
+            }).join('').toUpperCase();
+        }
+
+        function animateCubeToResult(angles) {
+            const steps = 20;
+            let step = 0;
+            
+            const interval = setInterval(function() {
+                step++;
+                cubeRotation.x += (angles.x - cubeRotation.x) / (steps - step + 1);
+                cubeRotation.y += (angles.y - cubeRotation.y) / (steps - step + 1);
+                cubeRotation.z += (angles.z - cubeRotation.z) / (steps - step + 1);
+                
+                updateCubeRotation();
+                
+                if (step >= steps) {
+                    clearInterval(interval);
+                }
+            }, 50);
+        }
+
+        function quickColor(color) {
+            document.getElementById('colorInput').value = color;
+            processColorRequest();
+        }
+
+        // Initialize cube rotation on load
+        window.onload = function() {
+            updateCubeRotation();
+        };
+    </script>
+</body>
+</html>
